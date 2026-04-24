@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     opentripmap_api_key: str = Field(default="", alias="OPENTRIPMAP_API_KEY")
     google_maps_api_key: str = Field(default="", alias="GOOGLE_MAPS_API_KEY")
-    skyscanner_api_key: str = Field(default="", alias="SKYSCANNER_API_KEY")
+    serpapi_api_key: str = Field(default="", alias="SERPAPI_API_KEY")
 
     chroma_tenant: str = Field(default="", alias="CHROMA_TENANT")
     chroma_database: str = Field(default="", alias="CHROMA_DATABASE")

@@ -116,16 +116,25 @@ class TravelApiService:
 
     @with_retries
     async def get_flights(self, destination: str) -> list[dict[str, Any]]:
-        if not settings.skyscanner_api_key:
-            logger.warning("SKYSCANNER_API_KEY is not configured. Returning empty flights.")
+        if not settings.serpapi_api_key:
+            logger.warning("SERPAPI_API_KEY is not configured. Returning empty flights.")
             return []
 
         async with get_async_client() as client:
             res = ensure_success(
                 await client.get(
-                    "https://partners.api.skyscanner.net/apiservices/v3/flights/live/search/create",
-                    headers={"x-api-key": settings.skyscanner_api_key},
-                    params={"destination": destination},
+                    "https://serpapi.com/search",
+                    params={
+                        "engine": "google_flights",
+                        "departure_id": "US",
+                        "arrival_id": destination.upper()[:3],
+                        "outbound_date": "2024-06-01",
+                        "api_key": settings.serpapi_api_key,
+                    },
                 )
             )
-            return [res.json()]
+            data = res.json()
+            flights = data.get("best_flights", [])
+            if not flights:
+                flights = data.get("flights", [])
+            return flights[:10]

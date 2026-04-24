@@ -7,9 +7,9 @@ Production-ready travel itinerary planner with FastAPI backend and React + Tailw
 - Frontend: React + Tailwind
 - Backend: FastAPI
 - Agent system:
-  - Research Agent (OpenTripMap + Google Maps + Skyscanner)
+  - Research Agent (OpenTripMap + Google Maps + SerpAPI Google Flights)
   - Budget Agent
-  - Planner Agent (Groq -> Hugging Face -> OpenRouter fallback)
+  - Planner Agent (Groq → Hugging Face → OpenRouter fallback)
   - Formatter Agent (strict JSON schema enforcement)
 - RAG:
   - Embedding APIs: Hugging Face Inference API or OpenRouter embeddings
@@ -107,3 +107,4 @@ Input:
 
 - n8n integration is intentionally left for your workflow ownership.
 - This implementation is API-only for LLM + embeddings.
+- **SerpAPI Google Flights**: Sign up at [serpapi.com](https://serpapi.com) for a free API key (100 searches/month free tier available).
