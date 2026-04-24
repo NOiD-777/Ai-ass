@@ -1,9 +1,18 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=str(BASE_DIR / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_env: str = Field(default="development", alias="APP_ENV")
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
@@ -45,6 +54,11 @@ class Settings(BaseSettings):
     chroma_port: int = Field(default=443, alias="CHROMA_PORT")
     chroma_ssl: bool = Field(default=True, alias="CHROMA_SSL")
     chroma_collection: str = Field(default="travel_itinerary_docs", alias="CHROMA_COLLECTION")
+
+    http_verify_ssl: bool = Field(default=True, alias="HTTP_VERIFY_SSL")
+    http_use_system_certs: bool = Field(default=True, alias="HTTP_USE_SYSTEM_CERTS")
+    ca_bundle_path: str = Field(default="", alias="CA_BUNDLE_PATH")
+    http_trust_env: bool = Field(default=False, alias="HTTP_TRUST_ENV")
 
 
 settings = Settings()

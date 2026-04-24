@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any
 from json import JSONDecodeError
+import httpx
 
 from ..core.config import settings
 from .http_client import get_async_client
@@ -13,17 +14,21 @@ logger = logging.getLogger(__name__)
 class LLMService:
     async def generate_json(self, prompt: str) -> dict[str, Any]:
         providers = [self._call_groq, self._call_huggingface, self._call_openrouter]
-        last_error: Exception | None = None
+        provider_errors: list[str] = []
 
         for provider in providers:
             try:
                 response_text = await provider(prompt)
                 return self._extract_json(response_text)
-            except (ValueError, RuntimeError, KeyError, TypeError, JSONDecodeError) as exc:
+            except (ValueError, RuntimeError, KeyError, TypeError, JSONDecodeError, httpx.HTTPError) as exc:
                 logger.exception("Provider %s failed", provider.__name__)
-                last_error = exc
+                provider_name = provider.__name__.replace("_call_", "")
+                provider_errors.append(f"{provider_name}: {exc}")
 
-        raise RuntimeError(f"All LLM providers failed. Last error: {last_error}")
+        raise RuntimeError(
+            "All LLM providers failed. "
+            + " | ".join(provider_errors)
+        )
 
     @with_retries
     async def _call_groq(self, prompt: str) -> str:

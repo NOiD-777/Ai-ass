@@ -1,7 +1,10 @@
 import logging
 import uuid
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 
 from ..core.config import settings
 
@@ -13,7 +16,7 @@ class CloudVectorStore:
         self.enabled = bool(settings.chroma_host and settings.chroma_api_key and settings.chroma_tenant and settings.chroma_database)
         self.collection = None
 
-        if self.enabled:
+        if self.enabled and chromadb is not None:
             self.client = chromadb.HttpClient(
                 host=settings.chroma_host,
                 port=settings.chroma_port,
@@ -23,6 +26,9 @@ class CloudVectorStore:
                 database=settings.chroma_database,
             )
             self.collection = self.client.get_or_create_collection(name=settings.chroma_collection)
+        elif self.enabled and chromadb is None:
+            logger.warning("chromadb package not installed. Disabling vector retrieval and using direct API context.")
+            self.enabled = False
         else:
             logger.warning("Chroma cloud config missing. RAG retrieval will fallback to direct API context.")
 
