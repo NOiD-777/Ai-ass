@@ -15,14 +15,24 @@ class EmbeddingService:
             raise ValueError("HUGGINGFACE_API_KEY is required for Hugging Face embeddings")
 
         async with get_async_client(timeout=60.0) as client:
-            res = ensure_success(
-                await client.post(
-                    f"https://api-inference.huggingface.co/pipeline/feature-extraction/{settings.huggingface_embedding_model}",
-                    headers={"Authorization": f"Bearer {settings.huggingface_api_key}"},
-                    json={"inputs": texts, "options": {"wait_for_model": True}},
-                )
-            )
-            payload = res.json()
+            headers = {"Authorization": f"Bearer {settings.huggingface_api_key}"}
+            body = {"inputs": texts, "options": {"wait_for_model": True}}
+            endpoints = [
+                f"https://router.huggingface.co/hf-inference/models/{settings.huggingface_embedding_model}",
+                f"https://api-inference.huggingface.co/models/{settings.huggingface_embedding_model}",
+                f"https://api-inference.huggingface.co/pipeline/feature-extraction/{settings.huggingface_embedding_model}",
+            ]
+
+            res = None
+            for endpoint in endpoints:
+                res = await client.post(endpoint, headers=headers, json=body)
+                if res.status_code not in (403, 404, 405):
+                    break
+
+            if res is None:
+                raise ValueError("Failed to call Hugging Face embeddings endpoint")
+
+            payload = ensure_success(res).json()
 
         if isinstance(payload, list) and payload and isinstance(payload[0][0], float):
             return payload

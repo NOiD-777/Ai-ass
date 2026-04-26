@@ -1,9 +1,13 @@
 import json
+import logging
 
 from ..models.schemas import ItineraryRequest, TravelContext
 from ..services.embeddings import EmbeddingService
 from ..services.travel_apis import TravelApiService
 from ..services.vector_store import CloudVectorStore
+
+
+logger = logging.getLogger(__name__)
 
 
 class ResearchAgent:
@@ -15,6 +19,7 @@ class ResearchAgent:
     async def run(self, request: ItineraryRequest) -> TravelContext:
         attractions = await self.travel_api.get_attractions(request.destination)
         hotels = await self.travel_api.get_hotels(request.destination)
+        food_places = await self.travel_api.get_food_places(request.destination)
         flights = await self.travel_api.get_flights(request.destination)
 
         place_names = [item.get("name", "") for item in attractions if item.get("name")]
@@ -27,6 +32,9 @@ class ResearchAgent:
             json.dumps({"source": "hotel", "data": h}, ensure_ascii=True)
             for h in hotels[:10]
         ] + [
+            json.dumps({"source": "food_place", "data": f}, ensure_ascii=True)
+            for f in food_places[:12]
+        ] + [
             json.dumps({"source": "flight", "data": f}, ensure_ascii=True)
             for f in flights[:5]
         ] + [
@@ -36,13 +44,19 @@ class ResearchAgent:
 
         rag_docs: list[str] = []
         if docs:
-            embeddings = await self.embedding_service.embed_texts(docs)
-            await self.vector_store.index_texts(docs, embeddings)
+            try:
+                embeddings = await self.embedding_service.embed_texts(docs)
+                await self.vector_store.index_texts(docs, embeddings)
 
-            query_embedding = (await self.embedding_service.embed_texts([
-                f"{request.destination} {','.join(request.preferences)} budget {request.budget}"
-            ]))[0]
-            rag_docs = await self.vector_store.query(query_embedding, top_k=8)
+                query_embedding = (await self.embedding_service.embed_texts([
+                    f"{request.destination} {','.join(request.preferences)} budget {request.budget}"
+                ]))[0]
+                rag_docs = await self.vector_store.query(query_embedding, top_k=8)
+            except Exception as exc:
+                logger.warning(
+                    "Embedding/RAG step failed. Falling back to direct API context: %s",
+                    exc,
+                )
 
         if not rag_docs:
             rag_docs = docs[:8]
@@ -50,6 +64,7 @@ class ResearchAgent:
         return TravelContext(
             attractions=attractions,
             hotels=hotels,
+            food_places=food_places,
             flights=flights,
             distances=distances,
             rag_docs=rag_docs,

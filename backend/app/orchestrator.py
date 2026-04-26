@@ -15,5 +15,5 @@ class TravelPlannerOrchestrator:
     async def generate_itinerary(self, request: ItineraryRequest) -> ItineraryResponse:
         context = await self.research_agent.run(request)
         budget_summary = await self.budget_agent.run(request, context)
-        raw_plan = await self.planner_agent.run(request, context.rag_docs, budget_summary)
-        return await self.formatter_agent.run(request, raw_plan)
+        raw_plan = await self.planner_agent.run(request, context, budget_summary)
+        return self.formatter_agent.run(request, raw_plan, context)

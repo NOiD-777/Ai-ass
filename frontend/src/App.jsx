@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { generateItinerary } from './api';
+import { useEffect, useMemo, useState } from 'react';
+import { generateItinerary, getUsdRates } from './api';
 import ItineraryView from './components/ItineraryView';
 
 const initialForm = {
@@ -9,11 +9,58 @@ const initialForm = {
   preferences: 'food,culture',
 };
 
+const FALLBACK_RATES = {
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  INR: 83.5,
+  JPY: 154,
+  CAD: 1.36,
+  AUD: 1.53,
+  SGD: 1.35,
+  AED: 3.67,
+};
+
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'AED'];
+
 export default function App() {
   const [form, setForm] = useState(initialForm);
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [rates, setRates] = useState({ USD: 1 });
+  const [ratesError, setRatesError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [itinerary, setItinerary] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadRates() {
+      try {
+        const nextRates = await getUsdRates();
+        if (!mounted) {
+          return;
+        }
+        setRates({ ...FALLBACK_RATES, ...nextRates });
+      } catch (err) {
+        if (!mounted) {
+          return;
+        }
+        setRates(FALLBACK_RATES);
+        setRatesError(err.message || 'Could not load live exchange rates. Using built-in fallback rates.');
+      }
+    }
+
+    loadRates();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const conversionRate = useMemo(
+    () => rates[selectedCurrency] || FALLBACK_RATES[selectedCurrency] || 1,
+    [rates, selectedCurrency],
+  );
 
   const onChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -25,9 +72,10 @@ export default function App() {
     setError('');
 
     try {
+      const normalizedBudget = Number(form.budget);
       const payload = {
         destination: form.destination,
-        budget: Number(form.budget),
+        budget: normalizedBudget / conversionRate,
         days: Number(form.days),
         preferences: form.preferences
           .split(',')
@@ -57,7 +105,7 @@ export default function App() {
 
           <form onSubmit={onSubmit} className="mt-7 grid gap-4 md:grid-cols-2">
             <label className="font-body text-sm">
-              Destination
+              <span>Destination</span>
               <input
                 className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
                 value={form.destination}
@@ -66,7 +114,7 @@ export default function App() {
             </label>
 
             <label className="font-body text-sm">
-              Budget (USD)
+              <span>Budget ({selectedCurrency})</span>
               <input
                 type="number"
                 className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
@@ -76,7 +124,20 @@ export default function App() {
             </label>
 
             <label className="font-body text-sm">
-              Days
+              <span>Currency</span>
+              <select
+                className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
+                value={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value)}
+              >
+                {SUPPORTED_CURRENCIES.map((code) => (
+                  <option key={code} value={code}>{code}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="font-body text-sm">
+              <span>Days</span>
               <input
                 type="number"
                 className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
@@ -86,7 +147,7 @@ export default function App() {
             </label>
 
             <label className="font-body text-sm">
-              Preferences (comma separated)
+              <span>Preferences (comma separated)</span>
               <input
                 className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
                 value={form.preferences}
@@ -104,9 +165,10 @@ export default function App() {
           </form>
 
           {error ? <p className="mt-4 font-body text-sm text-red-700">{error}</p> : null}
+          {ratesError ? <p className="mt-2 font-body text-xs text-amber-700">{ratesError}</p> : null}
         </header>
 
-        <ItineraryView itinerary={itinerary} />
+        <ItineraryView itinerary={itinerary} selectedCurrency={selectedCurrency} rate={conversionRate} />
       </div>
     </main>
   );

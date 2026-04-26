@@ -1,5 +1,18 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+export async function getUsdRates() {
+  const res = await fetch(`${API_BASE}/exchange-rates`);
+  const data = await res.json();
+  if (!res.ok || !data?.rates) {
+    throw new Error('Failed to load exchange rates');
+  }
+
+  return {
+    USD: 1,
+    ...data.rates,
+  };
+}
+
 export async function generateItinerary(payload) {
   const res = await fetch(`${API_BASE}/generate-itinerary`, {
     method: 'POST',

@@ -1,41 +1,151 @@
+import re
+
 from pydantic import ValidationError
 
-from ..models.schemas import ItineraryRequest, ItineraryResponse
+from ..models.schemas import ItineraryRequest, ItineraryResponse, TravelContext
+
+
+def _to_float(value: object) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = re.sub(r"[^0-9.\-]", "", value)
+        if not cleaned:
+            return 0.0
+        try:
+            return float(cleaned)
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+def _is_generic_stay(stay: str) -> bool:
+    text = stay.strip().lower()
+    generic_markers = [
+        "tbd",
+        "budget hotel",
+        "mid-range hotel",
+        "comfort hotel",
+        "hostel",
+        "accommodation",
+    ]
+    return any(marker in text for marker in generic_markers)
+
+
+def _pick_stay(current_stay: str, hotel_names: list[str], index: int) -> str:
+    if not hotel_names:
+        return current_stay or "TBD"
+
+    stay = current_stay.strip()
+    known_hotel_in_stay = any(name.lower() in stay.lower() for name in hotel_names)
+    if not stay or _is_generic_stay(stay) or not known_hotel_in_stay:
+        return hotel_names[index % len(hotel_names)]
+    return stay
+
+
+def _recompute_breakdown(breakdown: dict) -> None:
+    for key in ("transport", "activities", "meals", "stay", "misc"):
+        breakdown[key] = _to_float(breakdown.get(key, 0.0))
+
+    breakdown["daily_total"] = round(
+        breakdown["transport"]
+        + breakdown["activities"]
+        + breakdown["meals"]
+        + breakdown["stay"]
+        + breakdown["misc"],
+        2,
+    )
+
+
+def _sum_days_total(days: list[dict]) -> float:
+    return round(
+        sum(_to_float(day.get("cost_breakdown", {}).get("daily_total", 0.0)) for day in days),
+        2,
+    )
+
+
+def _normalize_days(days: list[dict], hotel_names: list[str]) -> None:
+    for i, day in enumerate(days, start=1):
+        day.setdefault("day", i)
+        day.setdefault("activities", [])
+        day.setdefault("meals", [])
+        day.setdefault("stay", "TBD")
+        day.setdefault("food_places", [])
+        day.setdefault("cost_breakdown", {})
+
+        day["stay"] = _pick_stay(str(day.get("stay", "")), hotel_names, i - 1)
+
+        breakdown = day["cost_breakdown"]
+        breakdown.setdefault("transport", 0.0)
+        breakdown.setdefault("activities", 0.0)
+        breakdown.setdefault("meals", 0.0)
+        breakdown.setdefault("stay", 0.0)
+        breakdown.setdefault("misc", 0.0)
+        _recompute_breakdown(breakdown)
+
+
+def _extract_food_place_names(food_places: list[dict]) -> list[str]:
+    names: list[str] = []
+    for item in food_places:
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        vicinity = str(item.get("vicinity", "")).strip()
+        if vicinity:
+            names.append(f"{name} · {vicinity}")
+        else:
+            names.append(name)
+    return names
+
+
+def _attach_food_places(days: list[dict], food_place_names: list[str]) -> None:
+    if not food_place_names:
+        return
+
+    for i, day in enumerate(days):
+        existing = day.get("food_places", [])
+        if isinstance(existing, list) and existing:
+            continue
+
+        start = (i * 3) % len(food_place_names)
+        suggestions = [food_place_names[(start + offset) % len(food_place_names)] for offset in range(min(3, len(food_place_names)))]
+        day["food_places"] = suggestions
+
+
+def _scale_days_to_budget(days: list[dict], budget: float, total: float) -> None:
+    if total <= budget or budget <= 0:
+        return
+
+    scale = budget / total
+    for day in days:
+        breakdown = day.get("cost_breakdown", {})
+        for key in ("transport", "activities", "meals", "stay", "misc"):
+            breakdown[key] = round(_to_float(breakdown.get(key, 0.0)) * scale, 2)
+        _recompute_breakdown(breakdown)
 
 
 class FormatterAgent:
-    async def run(self, request: ItineraryRequest, raw_plan: dict) -> ItineraryResponse:
+    def run(self, request: ItineraryRequest, raw_plan: dict, context: TravelContext) -> ItineraryResponse:
         raw_plan.setdefault("destination", request.destination)
-        raw_plan.setdefault("total_budget", request.budget)
+        raw_plan["total_budget"] = float(request.budget)
 
-        if "days" in raw_plan and isinstance(raw_plan["days"], list):
-            for i, day in enumerate(raw_plan["days"], start=1):
-                day.setdefault("day", i)
-                day.setdefault("activities", [])
-                day.setdefault("meals", [])
-                day.setdefault("stay", "TBD")
-                day.setdefault("cost_breakdown", {})
+        hotel_names = [
+            str(hotel.get("name", "")).strip()
+            for hotel in context.hotels
+            if str(hotel.get("name", "")).strip()
+        ]
 
-                breakdown = day["cost_breakdown"]
-                breakdown.setdefault("transport", 0.0)
-                breakdown.setdefault("activities", 0.0)
-                breakdown.setdefault("meals", 0.0)
-                breakdown.setdefault("stay", 0.0)
-                breakdown.setdefault("misc", 0.0)
-                if "daily_total" not in breakdown:
-                    breakdown["daily_total"] = float(
-                        breakdown.get("transport", 0)
-                        + breakdown.get("activities", 0)
-                        + breakdown.get("meals", 0)
-                        + breakdown.get("stay", 0)
-                        + breakdown.get("misc", 0)
-                    )
-
-        if "total_estimated_cost" not in raw_plan:
+        days = raw_plan.get("days", [])
+        if isinstance(days, list):
+            _normalize_days(days, hotel_names)
+            _attach_food_places(days, _extract_food_place_names(context.food_places))
+            total = _sum_days_total(days)
+            _scale_days_to_budget(days, request.budget, total)
+            total = _sum_days_total(days)
+        else:
             total = 0.0
-            for day in raw_plan.get("days", []):
-                total += float(day.get("cost_breakdown", {}).get("daily_total", 0.0))
-            raw_plan["total_estimated_cost"] = total
+
+        raw_plan["total_estimated_cost"] = round(total, 2)
 
         try:
             return ItineraryResponse.model_validate(raw_plan)

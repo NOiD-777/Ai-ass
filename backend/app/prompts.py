@@ -1,9 +1,23 @@
 from .models.schemas import ItineraryRequest
 
 
-def build_planner_prompt(request: ItineraryRequest, context_docs: list[str], budget_summary: str) -> str:
+def build_planner_prompt(
+    request: ItineraryRequest,
+    context_docs: list[str],
+    hotels: list[dict],
+    food_places: list[dict],
+    budget_summary: str,
+) -> str:
     context_text = "\n".join(context_docs[:20])
     preferences_text = ", ".join(request.preferences) if request.preferences else "general travel"
+    hotel_names = [str(h.get("name", "")).strip() for h in hotels if str(h.get("name", "")).strip()]
+    hotel_text = ", ".join(hotel_names[:12]) if hotel_names else "No provider hotel names available"
+    food_names = [
+        f"{str(item.get('name', '')).strip()} ({str(item.get('vicinity', '')).strip()})"
+        for item in food_places
+        if str(item.get("name", "")).strip()
+    ]
+    food_text = ", ".join(food_names[:12]) if food_names else "No provider food places available"
 
     return f"""
 You are a senior travel planning AI. Produce realistic, budget-aware, day-by-day itinerary JSON.
@@ -14,6 +28,8 @@ Constraints:
 - Days: {request.days}
 - Preferences: {preferences_text}
 - Budget summary guidance: {budget_summary}
+- Hotel candidates from live provider data: {hotel_text}
+- Food place candidates from Google Maps: {food_text}
 
 Retrieved travel context:
 {context_text}
@@ -28,6 +44,7 @@ STRICT OUTPUT JSON SHAPE:
       "activities": ["string"],
       "meals": ["string"],
       "stay": "string",
+      "food_places": ["string"],
       "cost_breakdown": {{
         "transport": number,
         "activities": number,
@@ -44,6 +61,9 @@ STRICT OUTPUT JSON SHAPE:
 Rules:
 - Keep total_estimated_cost <= total_budget whenever feasible.
 - Ensure each day has practical travel time and meal suggestions.
+- Use exact hotel names from "Hotel candidates" for each day's stay whenever available.
+- Do NOT use generic stay labels like "budget hotel", "hostel", or "mid-range hotel".
+- Include 2 to 4 real restaurant or cafe suggestions from "Food place candidates" in each day's "food_places" list when available.
 - Use numeric values for all costs.
 - Return valid JSON only.
 """.strip()

@@ -15,6 +15,7 @@ class DayPlan(BaseModel):
     activities: list[str]
     meals: list[str]
     stay: str
+    food_places: list[str] = Field(default_factory=list)
     cost_breakdown: dict[str, float]
 
 
@@ -32,6 +33,7 @@ class ErrorResponse(BaseModel):
 class TravelContext(BaseModel):
     attractions: list[dict[str, Any]] = Field(default_factory=list)
     hotels: list[dict[str, Any]] = Field(default_factory=list)
+    food_places: list[dict[str, Any]] = Field(default_factory=list)
     flights: list[dict[str, Any]] = Field(default_factory=list)
     distances: list[dict[str, Any]] = Field(default_factory=list)
     rag_docs: list[str] = Field(default_factory=list)
