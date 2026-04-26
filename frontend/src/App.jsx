@@ -2,10 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { generateItinerary, getUsdRates } from './api';
 import ItineraryView from './components/ItineraryView';
 
+function addDays(dateStr, count) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + count);
+  return d.toISOString().split('T')[0];
+}
+
+const todayStr = new Date().toISOString().split('T')[0];
+
 const initialForm = {
   origin: 'New York',
   destination: 'Paris',
-  travel_date: new Date().toISOString().split('T')[0],
+  travel_date: todayStr,
+  return_date: addDays(todayStr, 3),
   budget: 1500,
   days: 3,
   preferences: 'food,culture',
@@ -75,12 +84,15 @@ export default function App() {
 
     try {
       const normalizedBudget = Number(form.budget);
+      const numDays = Number(form.days);
+      const returnDate = form.return_date || addDays(form.travel_date, numDays);
       const payload = {
         origin: form.origin,
         destination: form.destination,
         travel_date: form.travel_date,
+        return_date: returnDate,
         budget: normalizedBudget / conversionRate,
-        days: Number(form.days),
+        days: numDays,
         preferences: form.preferences
           .split(',')
           .map((item) => item.trim())
@@ -127,12 +139,25 @@ export default function App() {
             </label>
 
             <label className="font-body text-sm">
-              <span>Travel Date</span>
+              <span>Departure Date</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
                 value={form.travel_date}
-                onChange={(e) => onChange('travel_date', e.target.value)}
+                onChange={(e) => {
+                  onChange('travel_date', e.target.value);
+                  onChange('return_date', addDays(e.target.value, Number(form.days)));
+                }}
+              />
+            </label>
+
+            <label className="font-body text-sm">
+              <span>Return Date</span>
+              <input
+                type="date"
+                className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
+                value={form.return_date}
+                onChange={(e) => onChange('return_date', e.target.value)}
               />
             </label>
 

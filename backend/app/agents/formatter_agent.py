@@ -145,7 +145,15 @@ class FormatterAgent:
         else:
             total = 0.0
 
-        raw_plan["total_estimated_cost"] = round(total, 2)
+        # Include flights cost in total
+        flights_cost = _to_float(raw_plan.get("flights_cost", 0.0))
+        return_flights_cost = _to_float(raw_plan.get("return_flights_cost", 0.0))
+        raw_plan["flights_cost"] = flights_cost
+        raw_plan["return_flights_cost"] = return_flights_cost
+        raw_plan["total_estimated_cost"] = round(total + flights_cost + return_flights_cost, 2)
+
+        # Ensure return_flight_suggestions exists
+        raw_plan.setdefault("return_flight_suggestions", [])
 
         try:
             return ItineraryResponse.model_validate(raw_plan)

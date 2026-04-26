@@ -17,6 +17,7 @@ body {
   min-height: 100vh;
 }
 
+/* ─── Shared animations ─── */
 .animate-fade-in {
   animation: fade-in 0.8s ease both;
 }
@@ -45,4 +46,142 @@ body {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── Flights panel ─── */
+.flights-panel {
+  background: linear-gradient(135deg, #f8fafb 0%, #f0f4f3 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+}
+
+/* ─── Cost summary banner ─── */
+.flights-cost-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: linear-gradient(135deg, #1a3c34 0%, #2d6a5a 50%, #1f4f46 100%);
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  box-shadow:
+    0 4px 20px rgba(31, 79, 70, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Flight section icon ─── */
+.flight-section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: currentColor;
+  color: white;
+  font-size: 0.875rem;
+  background: linear-gradient(135deg, rgba(31, 79, 70, 0.12), rgba(31, 79, 70, 0.04));
+  color: #1f4f46;
+}
+
+.flight-section-icon.text-amber-600 {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(217, 119, 6, 0.04));
+  color: #d97706;
+}
+
+/* ─── Flight card ─── */
+.flight-card {
+  position: relative;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.875rem;
+  padding: 0.875rem 1rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: card-in 0.45s ease both;
+  overflow: hidden;
+}
+
+.flight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1f4f46, #3b9b85, #1f4f46);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.flight-card:hover {
+  border-color: rgba(31, 79, 70, 0.2);
+  box-shadow:
+    0 8px 24px rgba(31, 79, 70, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.flight-card:hover::before {
+  opacity: 1;
+}
+
+/* ─── Route connector ─── */
+.flight-connector {
+  position: relative;
+  width: 100%;
+  height: 2px;
+}
+
+.flight-connector::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    #1f4f46 0,
+    #1f4f46 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  opacity: 0.35;
+}
+
+.flight-connector::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid #1f4f46;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0.5;
+}
+
+/* ─── Price tag ─── */
+.flight-price {
+  font-family: var(--font-display, 'Inter', system-ui, sans-serif);
+  font-weight: 700;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #1f4f46, #2d6a5a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
