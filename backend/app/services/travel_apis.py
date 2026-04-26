@@ -234,7 +234,7 @@ class TravelApiService:
         return distances
 
     @with_retries
-    async def get_flights(self, destination: str) -> list[dict[str, Any]]:
+    async def get_flights(self, origin: str, destination: str, outbound_date: str) -> list[dict[str, Any]]:
         if not settings.serpapi_api_key:
             logger.warning("SERPAPI_API_KEY is not configured. Returning empty flights.")
             return []
@@ -246,9 +246,10 @@ class TravelApiService:
                         "https://serpapi.com/search",
                         params={
                             "engine": "google_flights",
-                            "departure_id": "US",
-                            "arrival_id": destination.upper()[:3],
-                            "outbound_date": "2024-06-01",
+                            "departure_id": origin,
+                            "arrival_id": destination,
+                            "outbound_date": outbound_date,
+                            "type": "2",
                             "api_key": settings.serpapi_api_key,
                         },
                     )

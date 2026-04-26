@@ -33,27 +33,9 @@ class Settings(BaseSettings):
         alias="OPENROUTER_MODEL",
     )
 
-    embedding_provider: str = Field(default="huggingface", alias="EMBEDDING_PROVIDER")
-    huggingface_embedding_model: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2",
-        alias="HUGGINGFACE_EMBEDDING_MODEL",
-    )
-    openrouter_embedding_model: str = Field(
-        default="text-embedding-3-large",
-        alias="OPENROUTER_EMBEDDING_MODEL",
-    )
-
     opentripmap_api_key: str = Field(default="", alias="OPENTRIPMAP_API_KEY")
     google_maps_api_key: str = Field(default="", alias="GOOGLE_MAPS_API_KEY")
     serpapi_api_key: str = Field(default="", alias="SERPAPI_API_KEY")
-
-    chroma_tenant: str = Field(default="", alias="CHROMA_TENANT")
-    chroma_database: str = Field(default="", alias="CHROMA_DATABASE")
-    chroma_api_key: str = Field(default="", alias="CHROMA_API_KEY")
-    chroma_host: str = Field(default="", alias="CHROMA_HOST")
-    chroma_port: int = Field(default=443, alias="CHROMA_PORT")
-    chroma_ssl: bool = Field(default=True, alias="CHROMA_SSL")
-    chroma_collection: str = Field(default="travel_itinerary_docs", alias="CHROMA_COLLECTION")
 
     http_verify_ssl: bool = Field(default=True, alias="HTTP_VERIFY_SSL")
     http_use_system_certs: bool = Field(default=True, alias="HTTP_USE_SYSTEM_CERTS")

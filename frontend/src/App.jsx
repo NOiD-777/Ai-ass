@@ -3,7 +3,9 @@ import { generateItinerary, getUsdRates } from './api';
 import ItineraryView from './components/ItineraryView';
 
 const initialForm = {
+  origin: 'New York',
   destination: 'Paris',
+  travel_date: new Date().toISOString().split('T')[0],
   budget: 1500,
   days: 3,
   preferences: 'food,culture',
@@ -74,7 +76,9 @@ export default function App() {
     try {
       const normalizedBudget = Number(form.budget);
       const payload = {
+        origin: form.origin,
         destination: form.destination,
+        travel_date: form.travel_date,
         budget: normalizedBudget / conversionRate,
         days: Number(form.days),
         preferences: form.preferences
@@ -100,16 +104,35 @@ export default function App() {
             API-only Travel Itinerary Engine
           </h1>
           <p className="mt-3 max-w-2xl font-body text-base text-black/75">
-            Multi-agent planning with RAG, budget governance, LLM failover, and strict JSON output.
+            Multi-agent planning with budget governance, LLM failover, and strict JSON output.
           </p>
 
           <form onSubmit={onSubmit} className="mt-7 grid gap-4 md:grid-cols-2">
+            <label className="font-body text-sm">
+              <span>Origin</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
+                value={form.origin}
+                onChange={(e) => onChange('origin', e.target.value)}
+              />
+            </label>
+
             <label className="font-body text-sm">
               <span>Destination</span>
               <input
                 className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
                 value={form.destination}
                 onChange={(e) => onChange('destination', e.target.value)}
+              />
+            </label>
+
+            <label className="font-body text-sm">
+              <span>Travel Date</span>
+              <input
+                type="date"
+                className="mt-1 w-full rounded-xl border border-black/20 bg-white px-3 py-2 outline-none ring-clay transition focus:ring"
+                value={form.travel_date}
+                onChange={(e) => onChange('travel_date', e.target.value)}
               />
             </label>
 

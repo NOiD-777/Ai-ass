@@ -8,5 +8,5 @@ class PlannerAgent:
         self.llm_service = LLMService()
 
     async def run(self, request: ItineraryRequest, context: TravelContext, budget_summary: str) -> dict:
-        prompt = build_planner_prompt(request, context.rag_docs, context.hotels, context.food_places, budget_summary)
+        prompt = build_planner_prompt(request, context.api_docs, context.hotels, context.food_places, context.flights, budget_summary)
         return await self.llm_service.generate_json(prompt)

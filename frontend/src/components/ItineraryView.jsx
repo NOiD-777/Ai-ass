@@ -86,6 +86,8 @@ export default function ItineraryView({ itinerary, selectedCurrency = 'USD', rat
             Budget: {currency(itinerary.total_budget * rate, selectedCurrency)}
             {' '}
             • Estimated: {currency(itinerary.total_estimated_cost * rate, selectedCurrency)}
+            {' '}
+            • Flights: {currency((itinerary.flights_cost || 0) * rate, selectedCurrency)}
           </p>
         </div>
         <a
@@ -107,6 +109,24 @@ export default function ItineraryView({ itinerary, selectedCurrency = 'USD', rat
           referrerPolicy="no-referrer-when-downgrade"
         />
       </div>
+
+      {itinerary.flight_suggestions?.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-black/10 bg-white p-4">
+          <p className="font-display text-lg text-pine">Flight Suggestions</p>
+          <ul className="mt-2 list-inside list-disc font-body text-sm text-black/80">
+            {itinerary.flight_suggestions.map((flight, i) => {
+              if (typeof flight === 'string') {
+                return <li key={i}>{flight}</li>;
+              }
+              return (
+                <li key={i}>
+                  {flight.airline}: {flight.route}, {flight.date}, {currency((flight.price || 0) * rate, selectedCurrency)}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         {itinerary.days.map((day) => {

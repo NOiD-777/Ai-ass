@@ -11,9 +11,6 @@ Production-ready travel itinerary planner with FastAPI backend and React + Tailw
   - Budget Agent
   - Planner Agent (Groq → Hugging Face → OpenRouter fallback)
   - Formatter Agent (strict JSON schema enforcement)
-- RAG:
-  - Embedding APIs: Hugging Face Inference API or OpenRouter embeddings
-  - Vector DB: Chroma cloud over HTTP (no local embeddings, no local models)
 - MCP:
   - Tools: `get_attractions(destination)`, `get_hotels(destination)`, `estimate_costs(destination)`
 
@@ -39,7 +36,7 @@ Production-ready travel itinerary planner with FastAPI backend and React + Tailw
 ## Backend Setup
 
 1. Open `backend/.env.example` and copy to `.env`.
-2. Fill API keys and cloud vector store config.
+2. Fill API keys.
 3. Install dependencies:
 
 ```bash
@@ -106,5 +103,4 @@ Input:
 ## Notes
 
 - n8n integration is intentionally left for your workflow ownership.
-- This implementation is API-only for LLM + embeddings.
 - **SerpAPI Google Flights**: Sign up at [serpapi.com](https://serpapi.com) for a free API key (100 searches/month free tier available).
