@@ -8,6 +8,13 @@ function addDays(dateStr, count) {
   return d.toISOString().split('T')[0];
 }
 
+function diffDays(dateStr1, dateStr2) {
+  const d1 = new Date(dateStr1);
+  const d2 = new Date(dateStr2);
+  const diffTime = Math.abs(d2 - d1);
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
 const todayStr = new Date().toISOString().split('T')[0];
 
 const initialForm = {
@@ -190,7 +197,13 @@ export default function App() {
                   type="date"
                   className="w-full rounded-2xl border border-secondary-200 bg-white/50 px-4 py-3.5 pl-11 outline-none ring-primary-500/20 transition focus:border-primary-500 focus:ring-4"
                   value={form.return_date}
-                  onChange={(e) => onChange('return_date', e.target.value)}
+                  onChange={(e) => {
+                    const newReturn = e.target.value;
+                    onChange('return_date', newReturn);
+                    if (form.travel_date) {
+                      onChange('days', diffDays(form.travel_date, newReturn));
+                    }
+                  }}
                 />
                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -225,7 +238,13 @@ export default function App() {
                 type="number"
                 className="w-full rounded-2xl border border-secondary-200 bg-white/50 px-4 py-3.5 outline-none ring-primary-500/20 transition focus:border-primary-500 focus:ring-4"
                 value={form.days}
-                onChange={(e) => onChange('days', e.target.value)}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  onChange('days', val);
+                  if (form.travel_date) {
+                    onChange('return_date', addDays(form.travel_date, val));
+                  }
+                }}
               />
             </div>
 

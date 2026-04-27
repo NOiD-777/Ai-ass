@@ -29,6 +29,7 @@ def _append_places(target: list[dict[str, Any]], response_json: dict[str, Any]) 
                 "vicinity": item.get("vicinity", item.get("formatted_address", "")),
                 "rating": item.get("rating"),
                 "user_ratings_total": item.get("user_ratings_total"),
+                "price_level": item.get("price_level"),
                 "types": item.get("types", []),
             }
         )
@@ -108,18 +109,31 @@ class TravelApiService:
                 if lat is None or lng is None:
                     return []
 
-                hotels = ensure_success(
-                    await client.get(
-                        "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                hotels_res = await client.get(
+                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                    params={
+                        "location": f"{lat},{lng}",
+                        "radius": 4000,
+                        "type": "lodging",
+                        "key": settings.google_maps_api_key,
+                    },
+                )
+                hotels = ensure_success(hotels_res).json()
+                results = hotels.get("results", [])
+                
+                if not results:
+                    # Fallback to text search
+                    hotels_res = await client.get(
+                        "https://maps.googleapis.com/maps/api/place/textsearch/json",
                         params={
-                            "location": f"{lat},{lng}",
-                            "radius": 4000,
-                            "type": "lodging",
+                            "query": f"hotels in {destination}",
                             "key": settings.google_maps_api_key,
                         },
                     )
-                ).json()
-                return hotels.get("results", [])[:10]
+                    hotels = ensure_success(hotels_res).json()
+                    results = hotels.get("results", [])
+
+                return results[:10]
         except httpx.HTTPError as exc:
             logger.warning("Google Maps hotel request failed for destination=%s: %s", destination, exc)
             return []

@@ -64,7 +64,45 @@ def _sum_days_total(days: list[dict]) -> float:
     )
 
 
-def _normalize_days(days: list[dict], hotel_names: list[str]) -> None:
+def _fix_missing_meals(day: dict, food_place_names: list[str], day_index: int) -> None:
+    meals = day.get("meals", [])
+    if not isinstance(meals, list):
+        meals = []
+
+    meal_types = ["Breakfast", "Lunch", "Dinner"]
+    typed_meals = {mt: None for mt in meal_types}
+    for m in meals:
+        for mt in meal_types:
+            if mt.lower() in str(m).lower() and typed_meals[mt] is None:
+                typed_meals[mt] = m
+                break
+
+    new_meals = []
+    for i, mt in enumerate(meal_types):
+        if typed_meals[mt]:
+            new_meals.append(typed_meals[mt])
+        else:
+            if food_place_names:
+                # Rotate through available food places
+                place = food_place_names[(day_index * 3 + i) % len(food_place_names)]
+                new_meals.append(f"{mt} at {place} ($20)")
+            else:
+                new_meals.append(f"{mt} at local eatery ($15)")
+    day["meals"] = new_meals
+
+
+def _normalize_days(days: list[dict], hotel_names: list[str], food_place_names: list[str], distances: list[dict] = None) -> None:
+    # Calculate a rough transport fallback if needed
+    avg_transport = 15.0
+    if distances:
+        total_dist = 0.0
+        for d in distances:
+            match = re.search(r"(\d+(\.\d+)?)", d.get("distance_text", "0"))
+            if match:
+                total_dist += float(match.group(1))
+        if total_dist > 0:
+            avg_transport = round((total_dist * 1.5) / max(1, len(days)), 2)
+
     for i, day in enumerate(days, start=1):
         day.setdefault("day", i)
         day.setdefault("activities", [])
@@ -74,9 +112,14 @@ def _normalize_days(days: list[dict], hotel_names: list[str]) -> None:
         day.setdefault("cost_breakdown", {})
 
         day["stay"] = _pick_stay(str(day.get("stay", "")), hotel_names, i - 1)
+        _fix_missing_meals(day, food_place_names, i - 1)
 
         breakdown = day["cost_breakdown"]
-        breakdown.setdefault("transport", 0.0)
+        # If transport is 0 or missing, use the calculated average
+        transport = _to_float(breakdown.get("transport", 0.0))
+        if transport <= 0:
+            breakdown["transport"] = avg_transport
+        
         breakdown.setdefault("activities", 0.0)
         breakdown.setdefault("meals", 0.0)
         breakdown.setdefault("stay", 0.0)
@@ -137,8 +180,9 @@ class FormatterAgent:
 
         days = raw_plan.get("days", [])
         if isinstance(days, list):
-            _normalize_days(days, hotel_names)
-            _attach_food_places(days, _extract_food_place_names(context.food_places))
+            food_place_names = _extract_food_place_names(context.food_places)
+            _normalize_days(days, hotel_names, food_place_names, context.distances)
+            _attach_food_places(days, food_place_names)
             total = _sum_days_total(days)
             _scale_days_to_budget(days, request.budget, total)
             total = _sum_days_total(days)

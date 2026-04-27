@@ -14,8 +14,9 @@ def build_planner_prompt(
     preferences_text = ", ".join(request.preferences) if request.preferences else "general travel"
     hotel_names = [str(h.get("name", "")).strip() for h in hotels if str(h.get("name", "")).strip()]
     hotel_text = ", ".join(hotel_names[:12]) if hotel_names else "No provider hotel names available"
+    
     food_names = [
-        f"{str(item.get('name', '')).strip()} ({str(item.get('vicinity', '')).strip()})"
+        f"{str(item.get('name', '')).strip()} (Price Level: {item.get('price_level', 'N/A')}, Location: {str(item.get('vicinity', '')).strip()})"
         for item in food_places
         if str(item.get("name", "")).strip()
     ]
@@ -126,9 +127,12 @@ Rules:
 - Include 2 to 3 real return flight options in 'return_flight_suggestions' with trip_type "return".
 - For each flight include departure_time, arrival_time, duration (human-readable like '6h 15m'), and stops count.
 - Use strictly numeric values for 'price' (USD). Do NOT include currency symbols.
-- Ensure each day has practical travel time and meal suggestions.
-- Use exact hotel names from "Hotel candidates" for each day's stay whenever available.
+- Ensure each day has practical travel time and include specific suggestions for Breakfast, Lunch, and Dinner.
+- In 'meals', provide 3 descriptive suggestions (one for each: Breakfast, Lunch, and Dinner) like 'Breakfast at [Place] ($[Cost])', 'Lunch at [Place] ($[Cost])', etc.
+- Estimates for meals should be realistic based on the 'Price Level' (1=Budget, 2=Moderate, 3=Expensive, 4=Luxury).
+- Use exact hotel names from "Hotel candidates" for each day's stay whenever available. If none are available, suggest a realistic hotel name based on the destination.
 - Do NOT use generic stay labels like "budget hotel", "hostel", or "mid-range hotel".
+- Use the "Local transport estimate" from the budget summary to fill in the "transport" cost in each day's cost_breakdown.
 - Include 2 to 4 real restaurant or cafe suggestions from "Food place candidates" in each day's "food_places" list when available.
 - Use numeric values for all costs.
 - Return valid JSON only.
