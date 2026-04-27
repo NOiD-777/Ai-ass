@@ -1,4 +1,4 @@
-# AI Travel Itinerary Planner (API-only)
+# AI Travel Itinerary Planner 
 
 Production-ready travel itinerary planner with FastAPI backend and React + Tailwind frontend.
 

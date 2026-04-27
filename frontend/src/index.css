@@ -3,33 +3,38 @@
 @tailwind utilities;
 
 :root {
-  --bg-a: #f5f2e8;
-  --bg-b: #f3d9bf;
-  --shape: #d67b4f;
+  --primary: #0ea5e9;
+  --secondary: #0f172a;
+  --background: #f8fafc;
+  --surface: #ffffff;
 }
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 15% 10%, color-mix(in oklab, var(--shape), white 70%), transparent 30%),
-    radial-gradient(circle at 85% 85%, color-mix(in oklab, #1f4f46, white 75%), transparent 35%),
-    linear-gradient(140deg, var(--bg-a), var(--bg-b));
+  background-color: var(--background);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(245, 158, 11, 0.05) 0px, transparent 50%);
   min-height: 100vh;
+  color: var(--secondary);
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 /* ─── Shared animations ─── */
 .animate-fade-in {
-  animation: fade-in 0.8s ease both;
+  animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-rise {
-  animation: rise 0.55s ease both;
+  animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -40,31 +45,40 @@ body {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.99);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.97);
+    transform: scale(0.98) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1) translateY(0);
   }
+}
+
+/* ─── Glassmorphism ─── */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* ─── Flights panel ─── */
 .flights-panel {
-  background: linear-gradient(135deg, #f8fafb 0%, #f0f4f3 100%);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 1.25rem;
-  padding: 1.25rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Cost summary banner ─── */
@@ -74,12 +88,11 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  background: linear-gradient(135deg, #1a3c34 0%, #2d6a5a 50%, #1f4f46 100%);
-  border-radius: 0.875rem;
-  padding: 0.875rem 1.25rem;
-  box-shadow:
-    0 4px 20px rgba(31, 79, 70, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 /* ─── Flight section icon ─── */
@@ -87,101 +100,103 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
-  background: currentColor;
-  color: white;
-  font-size: 0.875rem;
-  background: linear-gradient(135deg, rgba(31, 79, 70, 0.12), rgba(31, 79, 70, 0.04));
-  color: #1f4f46;
-}
-
-.flight-section-icon.text-amber-600 {
-  background: linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(217, 119, 6, 0.04));
-  color: #d97706;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  background: #f0f9ff;
+  color: #0ea5e9;
+  font-size: 1rem;
 }
 
 /* ─── Flight card ─── */
 .flight-card {
   position: relative;
   background: white;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 0.875rem;
-  padding: 0.875rem 1rem;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: card-in 0.45s ease both;
-  overflow: hidden;
-}
-
-.flight-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #1f4f46, #3b9b85, #1f4f46);
-  opacity: 0;
-  transition: opacity 0.25s ease;
+  border: 1px solid #f1f5f9;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: card-in 0.5s ease both;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
 .flight-card:hover {
-  border-color: rgba(31, 79, 70, 0.2);
-  box-shadow:
-    0 8px 24px rgba(31, 79, 70, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.04);
-  transform: translateY(-2px);
-}
-
-.flight-card:hover::before {
-  opacity: 1;
+  border-color: #bae6fd;
+  box-shadow: 0 12px 24px -10px rgba(0, 165, 233, 0.15);
+  transform: translateY(-4px);
 }
 
 /* ─── Route connector ─── */
 .flight-connector {
   position: relative;
   width: 100%;
-  height: 2px;
-}
-
-.flight-connector::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: repeating-linear-gradient(
-    90deg,
-    #1f4f46 0,
-    #1f4f46 4px,
-    transparent 4px,
-    transparent 8px
-  );
-  opacity: 0.35;
+  height: 1px;
+  background: #e2e8f0;
 }
 
 .flight-connector::after {
-  content: '';
+  content: '✈';
   position: absolute;
-  right: -2px;
-  top: -3px;
-  width: 0;
-  height: 0;
-  border-left: 5px solid #1f4f46;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  opacity: 0.5;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  color: #94a3b8;
+  background: white;
+  padding: 0 4px;
 }
 
 /* ─── Price tag ─── */
 .flight-price {
-  font-family: var(--font-display, 'Inter', system-ui, sans-serif);
+  font-family: 'Outfit', sans-serif;
   font-weight: 700;
-  font-size: 1rem;
-  background: linear-gradient(135deg, #1f4f46, #2d6a5a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 1.125rem;
+  color: #0ea5e9;
+}
+
+/* ─── Timeline ─── */
+.timeline-item {
+  position: relative;
+  padding-left: 2rem;
+  border-left: 2px dashed #e2e8f0;
+  margin-bottom: 2rem;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 4px solid #0ea5e9;
+}
+
+/* ─── Buttons ─── */
+.btn-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  color: white;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px 0 rgba(14, 165, 233, 0.39);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.23);
+  filter: brightness(1.1);
+}
+
+.btn-secondary {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
