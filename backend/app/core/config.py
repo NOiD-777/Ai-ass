@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000, alias="APP_PORT")
 
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
-    groq_model: str = Field(default="llama-3.1-70b-versatile", alias="GROQ_MODEL")
+    groq_model: str = Field(default="meta-llama/llama-3.1-70b-instruct", alias="GROQ_MODEL")
 
     huggingface_api_key: str = Field(default="", alias="HUGGINGFACE_API_KEY")
     huggingface_model: str = Field(
-        default="mistralai/Mixtral-8x7B-Instruct-v0.1",
+        default="mistralai/Mistral-7B-Instruct-v0.3",
         alias="HUGGINGFACE_MODEL",
     )
 

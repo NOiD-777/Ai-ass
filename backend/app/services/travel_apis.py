@@ -50,41 +50,106 @@ def _dedupe_places(places: list[dict[str, Any]]) -> list[dict[str, Any]]:
 class TravelApiService:
     @with_retries
     async def get_attractions(self, destination: str) -> list[dict[str, Any]]:
-        if not settings.opentripmap_api_key:
-            logger.warning("OPENTRIPMAP_API_KEY is not configured. Returning empty attractions.")
-            return []
-
-        try:
-            async with get_async_client() as client:
-                geo_res = ensure_success(
-                    await client.get(
-                        "https://api.opentripmap.com/0.1/en/places/geoname",
-                        params={"name": destination, "apikey": settings.opentripmap_api_key},
-                    )
-                )
-                geo_data = geo_res.json()
-                lat, lon = geo_data.get("lat"), geo_data.get("lon")
-                if lat is None or lon is None:
-                    return []
-
-                res = ensure_success(
-                    await client.get(
-                        "https://api.opentripmap.com/0.1/en/places/radius",
+        # 1. Try to get curated attractions from SerpAPI first
+        serp_attractions = []
+        if settings.serpapi_api_key:
+            try:
+                async with get_async_client() as client:
+                    res = await client.get(
+                        "https://serpapi.com/search",
                         params={
-                            "radius": 5000,
-                            "lon": lon,
-                            "lat": lat,
-                            "limit": 20,
-                            "rate": 2,
-                            "format": "json",
-                            "apikey": settings.opentripmap_api_key,
+                            "engine": "google",
+                            "q": f"top sights in {destination}",
+                            "api_key": settings.serpapi_api_key,
                         },
                     )
-                )
-                return res.json()
-        except httpx.HTTPError as exc:
-            logger.warning("OpenTripMap request failed for destination=%s: %s", destination, exc)
-            return []
+                    if res.status_code == 200:
+                        data = res.json()
+                        # Extract from top_sights or knowledge_graph
+                        sights = data.get("top_sights", {}).get("sights", [])
+                        if not sights:
+                            sights = data.get("knowledge_graph", {}).get("top_attractions", [])
+                        
+                        for s in sights:
+                            name = s.get("title") or s.get("name")
+                            if name:
+                                serp_attractions.append({
+                                    "name": name,
+                                    "description": s.get("description"),
+                                    "source": "serpapi"
+                                })
+            except Exception as exc:
+                logger.warning("SerpAPI attractions failed for %s: %s", destination, exc)
+
+        # 2. Get data from Google Places (either as fallback or for details)
+        google_attractions: list[dict[str, Any]] = []
+        if settings.google_maps_api_key:
+            try:
+                async with get_async_client() as client:
+                    geocode = await client.get(
+                        "https://maps.googleapis.com/maps/api/geocode/json",
+                        params={"address": destination, "key": settings.google_maps_api_key},
+                    )
+                    lat, lng = _extract_lat_lng(geocode.json())
+                    
+                    if lat is not None and lng is not None:
+                        # Nearby search
+                        nearby = await client.get(
+                            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                            params={
+                                "location": f"{lat},{lng}",
+                                "radius": 10000,
+                                "type": "tourist_attraction",
+                                "key": settings.google_maps_api_key,
+                            },
+                        )
+                        _append_places(google_attractions, nearby.json())
+
+                        if not google_attractions:
+                            # Text search fallback
+                            text_search = await client.get(
+                                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                                params={
+                                    "query": f"tourist attractions in {destination}",
+                                    "key": settings.google_maps_api_key,
+                                },
+                            )
+                            _append_places(google_attractions, text_search.json())
+            except Exception as exc:
+                logger.warning("Google Maps attractions failed for %s: %s", destination, exc)
+
+        # 3. Merge and choose the best names
+        # We prioritize SerpAPI names but use Google for metadata (rating, vicinity)
+        final_attractions: list[dict[str, Any]] = []
+        seen_names: set[str] = set()
+
+        # Add SerpAPI ones first (curated)
+        for sa in serp_attractions:
+            name_lower = sa["name"].lower()
+            if name_lower in seen_names:
+                continue
+            
+            # Try to find matching Google data for ratings/vicinity
+            match = next((ga for ga in google_attractions if ga["name"].lower() in name_lower or name_lower in ga["name"].lower()), None)
+            if match:
+                sa.update({
+                    "vicinity": match.get("vicinity"),
+                    "rating": match.get("rating"),
+                    "user_ratings_total": match.get("user_ratings_total"),
+                    "types": match.get("types", [])
+                })
+            
+            final_attractions.append(sa)
+            seen_names.add(name_lower)
+
+        # Supplement with remaining Google ones
+        for ga in google_attractions:
+            name_lower = ga["name"].lower()
+            if name_lower not in seen_names:
+                final_attractions.append(ga)
+                seen_names.add(name_lower)
+
+        return final_attractions[:20]
 
     @with_retries
     async def get_hotels(self, destination: str) -> list[dict[str, Any]]:

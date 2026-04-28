@@ -19,16 +19,19 @@ function alignMealAmounts(meals, targetTotal, currencyCode) {
     return [];
   }
 
-  const amountRegex = /\(([^)]*?)([\d,]+(?:\.\d+)?)\)/;
+  // Improved regex to handle ( $ 222 ), ($222), (222) etc.
+  const amountRegex = /\(\s*[^0-9)]*?\s*([\d,]+(?:\.\d+)?)\s*\)/;
   const parsed = meals.map((item) => {
     const text = String(item || '');
     const match = amountRegex.exec(text);
-    const amount = match ? Number(match[2].replaceAll(',', '')) : 0;
+    const amount = match ? Number(match[1].replaceAll(',', '')) : 0;
     return { text, amount, hasAmount: Boolean(match) };
   });
 
   const sourceTotal = parsed.reduce((sum, item) => sum + item.amount, 0);
   const normalizedTarget = Number(targetTotal || 0);
+  
+  // If target is 0, remove amounts entirely for a cleaner look
   if (normalizedTarget <= 0) {
     return parsed.map((item) => item.text.replace(amountRegex, '').replaceAll(/\s+/g, ' ').trim());
   }
@@ -38,14 +41,19 @@ function alignMealAmounts(meals, targetTotal, currencyCode) {
       const scaled = (item.amount / sourceTotal) * normalizedTarget;
       const replacement = mealAmountFormatter(scaled, currencyCode);
       if (item.hasAmount) {
-        return item.text.replace(amountRegex, replacement);
+        // Use global regex to replace all matches if there are multiple (just in case)
+        const globalRegex = new RegExp(amountRegex.source, 'g');
+        return item.text.replace(globalRegex, replacement);
       }
       return `${item.text} ${replacement}`.trim();
     });
   }
 
   const perMeal = normalizedTarget / parsed.length;
-  return parsed.map((item) => `${item.text} ${mealAmountFormatter(perMeal, currencyCode)}`.trim());
+  return parsed.map((item) => {
+    const replacement = mealAmountFormatter(perMeal, currencyCode);
+    return `${item.text.replace(amountRegex, '').trim()} ${replacement}`.trim();
+  });
 }
 
 function mapSearchUrl(query) {
@@ -339,7 +347,7 @@ export default function ItineraryView({ itinerary, selectedCurrency = 'USD', rat
                            <div className="flex flex-wrap gap-2">
                               {Object.entries(day.cost_breakdown).map(([key, value]) => (
                                 <span key={key} className="px-2 py-1 rounded-lg bg-secondary-50 border border-secondary-100 text-[10px] font-medium text-secondary-500">
-                                  <span className="capitalize">{key}:</span> {currency(value * rate, selectedCurrency)}
+                                  <span className="capitalize">{key.replace(/_/g, ' ')}:</span> {currency(value * rate, selectedCurrency)}
                                 </span>
                               ))}
                            </div>
