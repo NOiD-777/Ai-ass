@@ -124,6 +124,61 @@ function FlightCard({ flight, selectedCurrency, rate, index }) {
   );
 }
 
+/* ───── Ground transport card component ───── */
+function GroundTransportCard({ transport, selectedCurrency, rate, index }) {
+  const isBus = transport.mode?.toLowerCase() === 'bus';
+  const icon = isBus ? (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  ) : (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  );
+
+  return (
+    <div
+      className="flight-card group border border-secondary-100 hover:border-primary-200"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isBus ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'} font-bold`}>
+            {icon}
+          </div>
+          <div>
+            <p className="font-display text-sm font-bold text-secondary-900 capitalize">{transport.mode || 'Ground Transport'}</p>
+            <p className="text-[10px] text-secondary-400 font-medium uppercase tracking-wider">Alternate Route</p>
+          </div>
+        </div>
+        <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase border bg-secondary-50 text-secondary-600 border-secondary-100">
+          Available
+        </span>
+      </div>
+
+      <div className="space-y-2 py-2">
+        <div className="flex justify-between items-center">
+          <span className="text-[11px] text-secondary-400 font-medium uppercase">Route</span>
+          <span className="text-sm font-bold text-secondary-900">{transport.route || 'N/A'}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-[11px] text-secondary-400 font-medium uppercase">Duration</span>
+          <span className="text-sm font-bold text-secondary-900">{transport.duration || 'N/A'}</span>
+        </div>
+        <p className="text-[11px] text-secondary-500 mt-2 leading-relaxed">
+          {transport.description}
+        </p>
+      </div>
+
+      <div className="mt-4 pt-3 flex items-center justify-between border-t border-secondary-50">
+        <span className="font-medium text-[11px] text-secondary-400">Est. Charge</span>
+        <span className="flight-price">{currency(Number(transport.price || 0) * rate, selectedCurrency)}</span>
+      </div>
+    </div>
+  );
+}
+
 /* ───── Section Header ───── */
 function SectionHeader({ icon, title, subtitle, colorClass = "text-primary-500" }) {
   return (
@@ -158,9 +213,13 @@ export default function ItineraryView({ itinerary, selectedCurrency = 'USD', rat
     }));
   };
 
-  const outboundFlights = itinerary.flight_suggestions || [];
-  const returnFlights = itinerary.return_flight_suggestions || [];
+  const outboundFlights = (itinerary.flight_suggestions || []).filter(f => f.airline !== 'Not Available');
+  const returnFlights = (itinerary.return_flight_suggestions || []).filter(f => f.airline !== 'Not Available');
+  const groundTransport = itinerary.ground_transport || [];
+  
   const hasAnyFlights = outboundFlights.length > 0 || returnFlights.length > 0;
+  const hasGroundTransport = groundTransport.length > 0;
+
   const outboundCost = Number(itinerary.flights_cost || 0);
   const returnCost = Number(itinerary.return_flights_cost || 0);
   const totalFlightCost = outboundCost + returnCost;
@@ -216,7 +275,7 @@ export default function ItineraryView({ itinerary, selectedCurrency = 'USD', rat
       </div>
 
       {/* ═══════ FLIGHTS SECTION ═══════ */}
-      {hasAnyFlights && (
+      {hasAnyFlights ? (
         <div className="space-y-6">
           <div className="flights-cost-banner border border-secondary-100">
             <div className="flex items-center gap-3">
@@ -281,6 +340,20 @@ export default function ItineraryView({ itinerary, selectedCurrency = 'USD', rat
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      ) : hasGroundTransport && (
+        <div className="space-y-6">
+          <SectionHeader 
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h5a1 1 0 011 1v10a1 1 0 01-1 1h-1" /></svg>}
+            title="Alternative Travel Options"
+            subtitle="Flights Unavailable • Bus & Train Estimates"
+            colorClass="text-amber-500"
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {groundTransport.map((item, i) => (
+              <GroundTransportCard key={`ground-${i}`} transport={item} selectedCurrency={selectedCurrency} rate={rate} index={i} />
+            ))}
           </div>
         </div>
       )}

@@ -19,7 +19,7 @@ def _to_float(value: object) -> float:
     return 0.0
 
 
-def _is_generic_stay(stay: str) -> bool:
+def _is_generic_stay(stay: str, destination: str = "") -> bool:
     text = stay.strip().lower()
     generic_markers = [
         "tbd",
@@ -28,17 +28,34 @@ def _is_generic_stay(stay: str) -> bool:
         "comfort hotel",
         "hostel",
         "accommodation",
+        "stay at local",
+        "self-arranged",
     ]
-    return any(marker in text for marker in generic_markers)
+    if any(marker in text for marker in generic_markers):
+        return True
+    
+    if destination:
+        dest_lower = destination.lower()
+        # Matches "Hotel Nizamabad", "Nizamabad Hotel", etc.
+        placeholders = [
+            f"hotel {dest_lower}",
+            f"{dest_lower} hotel",
+            f"stay in {dest_lower}",
+            f"accommodation in {dest_lower}"
+        ]
+        if any(p in text for p in placeholders):
+            return True
+            
+    return False
 
 
-def _pick_stay(current_stay: str, hotel_names: list[str], index: int) -> str:
+def _pick_stay(current_stay: str, hotel_names: list[str], index: int, destination: str = "") -> str:
     if not hotel_names:
         return current_stay or "TBD"
 
     stay = current_stay.strip()
     known_hotel_in_stay = any(name.lower() in stay.lower() for name in hotel_names)
-    if not stay or _is_generic_stay(stay) or not known_hotel_in_stay:
+    if not stay or _is_generic_stay(stay, destination) or not known_hotel_in_stay:
         return hotel_names[index % len(hotel_names)]
     return stay
 
@@ -160,6 +177,7 @@ def _normalize_days(
     hotel_names: list[str], 
     food_place_names: list[str], 
     attraction_names: list[str],
+    destination: str,
     distances: list[dict] = None
 ) -> None:
     # Calculate a rough transport fallback if needed
@@ -181,7 +199,7 @@ def _normalize_days(
         day.setdefault("food_places", [])
         day.setdefault("cost_breakdown", {})
 
-        day["stay"] = _pick_stay(str(day.get("stay", "")), hotel_names, i - 1)
+        day["stay"] = _pick_stay(str(day.get("stay", "")), hotel_names, i - 1, destination)
         day["activities"] = _pick_activities(day.get("activities", []), attraction_names, i - 1)
         _fix_missing_meals(day, food_place_names, i - 1)
 
@@ -257,7 +275,7 @@ class FormatterAgent:
                 for attr in context.attractions
                 if str(attr.get("name", "")).strip()
             ]
-            _normalize_days(days, hotel_names, food_place_names, attraction_names, context.distances)
+            _normalize_days(days, hotel_names, food_place_names, attraction_names, raw_plan["destination"], context.distances)
             _attach_food_places(days, food_place_names)
             total = _sum_days_total(days)
             _scale_days_to_budget(days, request.budget, total)
@@ -272,8 +290,9 @@ class FormatterAgent:
         raw_plan["return_flights_cost"] = return_flights_cost
         raw_plan["total_estimated_cost"] = round(total + flights_cost + return_flights_cost, 2)
 
-        # Ensure return_flight_suggestions exists
+        # Ensure required fields exist
         raw_plan.setdefault("return_flight_suggestions", [])
+        raw_plan.setdefault("ground_transport", [])
 
         try:
             return ItineraryResponse.model_validate(raw_plan)

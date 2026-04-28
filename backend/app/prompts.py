@@ -100,6 +100,15 @@ STRICT OUTPUT JSON SHAPE:
       "trip_type": "return"
     }}
   ],
+  "ground_transport": [
+    {{
+      "mode": "string (bus or train)",
+      "route": "string",
+      "duration": "string",
+      "price": number,
+      "description": "string"
+    }}
+  ],
   "days": [
     {{
       "day": number,
@@ -123,8 +132,9 @@ STRICT OUTPUT JSON SHAPE:
 Rules:
 - Keep total_estimated_cost <= total_budget whenever feasible.
 - Estimate flights_cost for outbound based on "Outbound flight options" and return_flights_cost for return based on "Return flight options". Include both in total_estimated_cost.
-- Include 2 to 3 real outbound flight options in 'flight_suggestions' with trip_type "outbound".
-- Include 2 to 3 real return flight options in 'return_flight_suggestions' with trip_type "return".
+- If real-time flight data is NOT available, leave 'flight_suggestions' and 'return_flight_suggestions' as empty lists [].
+- If flights are unavailable, you MUST provide at least 2 'ground_transport' options (e.g., one Bus and one Train) with realistic estimated costs and durations based on the distance.
+- For ground transport, include a short 'description' of how to book or where to catch the transport.
 - For each flight include departure_time, arrival_time, duration (human-readable like '6h 15m'), and stops count.
 - Use strictly numeric values for 'price' (USD). Do NOT include currency symbols.
 - Ensure each day has practical travel time and include specific suggestions for Breakfast, Lunch, and Dinner.

@@ -153,55 +153,125 @@ class TravelApiService:
 
     @with_retries
     async def get_hotels(self, destination: str) -> list[dict[str, Any]]:
-        if not settings.google_maps_api_key:
-            logger.warning("GOOGLE_MAPS_API_KEY is not configured. Returning empty hotels.")
-            return []
+        all_hotels = []
 
-        try:
-            async with get_async_client() as client:
-                geocode = ensure_success(
-                    await client.get(
+        # 1. Try Google Maps
+        if settings.google_maps_api_key:
+            try:
+                async with get_async_client() as client:
+                    geocode_res = await client.get(
                         "https://maps.googleapis.com/maps/api/geocode/json",
                         params={"address": destination, "key": settings.google_maps_api_key},
                     )
-                ).json()
-                results = geocode.get("results", [])
-                if not results:
-                    return []
+                    geocode = geocode_res.json()
+                    lat, lng = _extract_lat_lng(geocode)
+                    
+                    results = []
+                    if lat is not None and lng is not None:
+                        hotels_res = await client.get(
+                            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                            params={
+                                "location": f"{lat},{lng}",
+                                "radius": 8000, # Increased radius
+                                "type": "lodging",
+                                "key": settings.google_maps_api_key,
+                            },
+                        )
+                        results = hotels_res.json().get("results", [])
+                    
+                    if not results:
+                        # Fallback to text search (doesn't strictly require lat/lng)
+                        hotels_res = await client.get(
+                            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                            params={
+                                "query": f"top hotels in {destination}",
+                                "key": settings.google_maps_api_key,
+                            },
+                        )
+                        results = hotels_res.json().get("results", [])
 
-                location = results[0].get("geometry", {}).get("location", {})
-                lat, lng = location.get("lat"), location.get("lng")
-                if lat is None or lng is None:
-                    return []
+                    for r in results:
+                        all_hotels.append({
+                            "name": r.get("name"),
+                            "vicinity": r.get("vicinity", r.get("formatted_address")),
+                            "rating": r.get("rating"),
+                            "source": "google"
+                        })
+            except Exception as exc:
+                logger.warning("Google Maps hotel search failed: %s", exc)
 
-                hotels_res = await client.get(
-                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-                    params={
-                        "location": f"{lat},{lng}",
-                        "radius": 4000,
-                        "type": "lodging",
-                        "key": settings.google_maps_api_key,
-                    },
-                )
-                hotels = ensure_success(hotels_res).json()
-                results = hotels.get("results", [])
-                
-                if not results:
-                    # Fallback to text search
-                    hotels_res = await client.get(
-                        "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        # 2. Try SerpAPI fallback if needed
+        if not all_hotels and settings.serpapi_api_key:
+            try:
+                async with get_async_client() as client:
+                    # Try google_maps engine for better local results
+                    res = await client.get(
+                        "https://serpapi.com/search",
                         params={
-                            "query": f"hotels in {destination}",
-                            "key": settings.google_maps_api_key,
+                            "engine": "google_maps",
+                            "type": "search",
+                            "q": f"hotels in {destination}",
+                            "api_key": settings.serpapi_api_key,
                         },
+                        timeout=20.0
                     )
-                    hotels = ensure_success(hotels_res).json()
-                    results = hotels.get("results", [])
+                    data = res.json()
+                    results = data.get("local_results", [])
+                    if not results:
+                        results = data.get("place_results", [])
+                    
+                    for h in results:
+                        title = h.get("title") or h.get("name")
+                        if title:
+                            all_hotels.append({
+                                "name": title,
+                                "vicinity": h.get("address") or h.get("description"),
+                                "rating": h.get("rating"),
+                                "source": "serpapi_maps"
+                            })
+                    
+                    if not all_hotels:
+                        # Fallback to regular search if maps engine fails
+                        res = await client.get(
+                            "https://serpapi.com/search",
+                            params={
+                                "engine": "google",
+                                "q": f"best hotels in {destination}",
+                                "api_key": settings.serpapi_api_key,
+                            },
+                            timeout=15.0
+                        )
+                        data = res.json()
+                        for h in data.get("local_results", []):
+                            if h.get("title"):
+                                all_hotels.append({
+                                    "name": h.get("title"),
+                                    "vicinity": h.get("address"),
+                                    "rating": h.get("rating"),
+                                    "source": "serpapi_local"
+                                })
+                    
+                    if not all_hotels:
+                        for h in data.get("organic_results", []):
+                            title = h.get("title", "")
+                            if "hotel" in title.lower() or "resort" in title.lower():
+                                all_hotels.append({
+                                    "name": title,
+                                    "source": "serpapi_organic"
+                                })
+            except Exception as exc:
+                logger.warning("SerpAPI hotel search fallback failed: %s", exc)
 
-                return results[:10]
-        except httpx.HTTPError as exc:
-            logger.warning("Google Maps hotel request failed for destination=%s: %s", destination, exc)
-            return []
+        # Dedupe by name
+        unique_hotels = []
+        seen = set()
+        for h in all_hotels:
+            name_lower = h["name"].lower()
+            if name_lower not in seen:
+                seen.add(name_lower)
+                unique_hotels.append(h)
+
+        return unique_hotels[:10]
 
     @with_retries
     async def get_food_places(self, destination: str) -> list[dict[str, Any]]:

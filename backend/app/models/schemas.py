@@ -34,6 +34,14 @@ class FlightSuggestion(BaseModel):
     trip_type: str = Field(default="outbound", description="'outbound' or 'return'")
 
 
+class GroundTransport(BaseModel):
+    mode: str = Field(description="'bus' or 'train'")
+    route: str
+    duration: str
+    price: float
+    description: str
+
+
 class ItineraryResponse(BaseModel):
     destination: str
     total_budget: float
@@ -41,6 +49,7 @@ class ItineraryResponse(BaseModel):
     return_flights_cost: float = Field(default=0.0)
     flight_suggestions: list[FlightSuggestion] = Field(default_factory=list)
     return_flight_suggestions: list[FlightSuggestion] = Field(default_factory=list)
+    ground_transport: list[GroundTransport] = Field(default_factory=list)
     days: list[DayPlan]
     total_estimated_cost: float
 
